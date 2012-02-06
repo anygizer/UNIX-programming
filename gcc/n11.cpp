@@ -4,32 +4,117 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 using namespace std;
 
-int lsd(const char *path)
+bool isdir(const char *path)
 {
-  DIR *dp;
-  struct dirent *ep;
   struct stat st_buf;
-  //  char *subpath;
-  //  int pathLen = strlen(path);
-  char fullpath[255];
+  // Get the status of the file system object.
+  if (stat(path, &st_buf) != 0)
+  {
+    cerr << "Error: " << strerror(errno) << ", " << path
+	 << "cwd: " << get_current_dir_name() << endl;
+    exit(1);
+  }
+  return S_ISDIR(st_buf.st_mode);
+}
+
+int rm(const char *path)
+{
+  if(isdir(path))
+  {
+    char cwd[255];
+    getcwd(cwd, 255);
+    DIR *dp = opendir(path);
+    struct dirent *ep;
+    if(dp != NULL)
+    {
+      if(chdir(path) < 0)
+      {
+	cerr << "chdir(in): " << path << endl;
+	exit(1);
+      }
+      while((ep = readdir(dp)) != NULL)
+      {
+	if((strcmp(ep->d_name, ".") != 0) && (strcmp(ep->d_name, "..") != 0))
+	{
+	  rm(ep->d_name);
+	}
+      }
+      if(chdir(cwd) < 0)
+      {
+	cerr << "chdir(out): " << cwd << endl;
+	exit(1);
+      }
+      (void) closedir(dp);
+      return rmdir(path);
+    }
+    else
+    {
+      exit(1);
+    }
+  }
+  else
+  {
+    return unlink(path);
+  }
+}
+
+int cleardir(const char* dirpath)
+{
+  struct stat st_buf;
+  // Get the status of the file system object.
+  if (stat(dirpath, &st_buf) != 0)
+  {
+    cerr << "Error: " << strerror(errno) << ", " << dirpath
+	 << "cwd: " << get_current_dir_name() << endl;
+    exit(1);
+  }
+  if(S_ISDIR(st_buf.st_mode))
+  {
+    rm(dirpath);
+    if(mkdir(dirpath, st_buf.st_mode) != 0)
+    {
+      cerr << "Error: " << strerror(errno) << ", " << dirpath
+	   << "cwd: " << get_current_dir_name() << endl;
+      exit(1);
+    }
+    return 0;
+  }
+  else
+  {
+    exit(1);
+  }
+}
+
+int cpdirtree(const char *dst, const char *src)
+{
+  // Get the current directory to know where to return in the end.
   char cwd[255];
   getcwd(cwd, 255);
 
-  dp = opendir(path);
+  DIR *dp;
+  struct dirent *ep;
+  char *subDst;
+  int dstLen = strlen(dst);
+  char absoluteSrc[255];
+
+  struct stat st_buf;
+
+  dp = opendir(src);
   if(dp != NULL)
   {
-    if(chdir(path) < 0)
+    if(chdir(src) < 0)
     {
-      cerr << "chdir: " << path << endl;
+      cerr << "chdir(in): " << src << endl;
       exit(1);
     }
-    while(((ep = readdir (dp)) != NULL)
-	  && (strcmp(ep->d_name, ".") != 0)
-	  && (strcmp(ep->d_name, "..") != 0))
-    {      
+    while((ep = readdir(dp)) != NULL)
+    {
+      if((strcmp(ep->d_name, ".") == 0) || (strcmp(ep->d_name, "..") == 0))
+	continue;
       // Get the status of the file system object.
       if (stat(ep->d_name, &st_buf) != 0)
       {
@@ -37,42 +122,89 @@ int lsd(const char *path)
 	     << "cwd: " << get_current_dir_name() << endl;
 	exit(1);
       }
-      
+
       if(S_ISDIR(st_buf.st_mode))
       {
-	//	subpath = new char[pathLen + strlen(ep->d_name) + 1];
-	//	subpath = strcat(strcat(strcpy(subpath, path), "/"), ep->d_name);
+	getcwd(absoluteSrc, 255);
+
+	cout << absoluteSrc << "/" << ep->d_name << endl;
+
+	if(chdir(dst) < 0)
+	{
+	  cerr << "chdir(indst): " << dst << endl;
+	  exit(1);
+	}
+	//Checking for existance
+	if((mkdir(ep->d_name, st_buf.st_mode) != 0) && (errno != EEXIST))
+	{
+	  cerr << "Error: " << strerror(errno) << ", " << ep->d_name
+	       << "cwd: " << get_current_dir_name() << endl;
+	  exit(1);
+	}
+	if(chdir(absoluteSrc) < 0)
+	{
+	  cerr << "chdir(outdst): " << absoluteSrc << endl;
+	  exit(1);
+	}
+
+	if(dst[dstLen-1] == '/')
+	{
+	  subDst = new char[dstLen + strlen(ep->d_name)];
+	  subDst = strcat(strcpy(subDst, dst), ep->d_name);
+	}
+	else
+	{
+	  subDst = new char[dstLen + 1 + strlen(ep->d_name)];
+	  subDst = strcat(strcat(strcpy(subDst, dst), "/"), ep->d_name);
+	}
 	
-	cout << getcwd(fullpath, 255) << "/" << ep->d_name << endl;
-	lsd(ep->d_name);
+	cpdirtree(subDst, ep->d_name);
       }
     }
     (void) closedir(dp);
+    if(chdir(cwd) < 0)
+    {
+      cerr << "chdir(out): " << cwd << endl;
+      exit(1);
+    }
+    return 0;
   }
   else
-    cerr << "Couldn't open the directory: " << path << endl;
-  if(chdir(cwd) < 0)
   {
-    cerr << "chdir: " << cwd << endl;
+    cerr << "Couldn't open the directory: " << src << endl;
     exit(1);
   }
-  return 0;
 }
 
 int main(int argc, char *argv[])
 {
   // Ensure argument passed.
-  if (argc < 2)
+  if (argc < 3)
   {
-    cout << "Usage: progName <fileSpec>\n";
-    cout << "       where <fileSpec> is the dir to copy.\n";
+    cout << "Usage: cpdirr [-d] SRC DST\n"
+         << "       -d     to clear destination directory\n"
+         << "       SRC    path to directory to copy from\n"
+         << "       DST    path to directory to copy to";
     return 1;
   }
 
-  for(int i = 1; i < argc; i++)
+  char *src = argv[1];
+  char *dst = argv[2];
+
+  //Directory clearence checking
+  if(strcmp(argv[1], "-d") == 0)
   {
-    cout << i << ":" << argv[i] << endl;
-    lsd(argv[i]);
+    cleardir(argv[3]);
+    src = argv[2];
+    dst = argv[3];
   }
-  return 0;
+
+  char fullDstPath[255];
+  if(dst[0] != '/')
+  {
+    strcat(strcat(getcwd(fullDstPath, 255),"/"), dst);
+    return cpdirtree(fullDstPath, src);
+  }
+
+  return cpdirtree(dst, src);
 }

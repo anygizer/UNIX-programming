@@ -1,2 +1,2 @@
 #!/bin/sh
-g++ -ansi -pedantic-errors -Wall -g n11.cpp
+g++ -ansi -pedantic-errors -Wall -g n11.cpp -o cpdirr
