@@ -1,4 +1,4 @@
-#include <iostream>
+#include <stdio.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -6,16 +6,15 @@
 #include <string.h>
 #include <unistd.h>
 
-using namespace std;
-
-bool isdir(const char *path)
+int isdir(const char *path)
 {
   struct stat st_buf;
-  // Get the status of the file system object.
+  char buf[255];
+  /* Get the status of the file system object. */
   if (stat(path, &st_buf) != 0)
   {
-    cerr << "Error: " << strerror(errno) << ", " << path
-	 << "cwd: " << get_current_dir_name() << endl;
+    fprintf(stderr, "Error: %s, %s cwd: %s\n", 
+	    strerror(errno), path, getcwd(buf, 255));
     exit(1);
   }
   return S_ISDIR(st_buf.st_mode);
@@ -26,14 +25,15 @@ int rm(const char *path)
   if(isdir(path))
   {
     char cwd[255];
-    getcwd(cwd, 255);
     DIR *dp = opendir(path);
     struct dirent *ep;
+
+    getcwd(cwd, 255);
     if(dp != NULL)
     {
       if(chdir(path) < 0)
       {
-	cerr << "chdir(in): " << path << endl;
+	fprintf(stderr, "chdir(in): %s\n", path);
 	exit(1);
       }
       while((ep = readdir(dp)) != NULL)
@@ -45,7 +45,7 @@ int rm(const char *path)
       }
       if(chdir(cwd) < 0)
       {
-	cerr << "chdir(out): " << cwd << endl;
+	fprintf(stderr, "chdir(out): %s\n", cwd);
 	exit(1);
       }
       (void) closedir(dp);
@@ -65,11 +65,12 @@ int rm(const char *path)
 int cleardir(const char* dirpath)
 {
   struct stat st_buf;
-  // Get the status of the file system object.
+  char buf[255];
+  /* Get the status of the file system object. */
   if (stat(dirpath, &st_buf) != 0)
   {
-    cerr << "Error: " << strerror(errno) << ", " << dirpath
-	 << "cwd: " << get_current_dir_name() << endl;
+    fprintf(stderr, "Error: %s, %s cwd: %s\n", 
+	    strerror(errno), dirpath, getcwd(buf, 255));
     exit(1);
   }
   if(S_ISDIR(st_buf.st_mode))
@@ -77,8 +78,8 @@ int cleardir(const char* dirpath)
     rm(dirpath);
     if(mkdir(dirpath, st_buf.st_mode) != 0)
     {
-      cerr << "Error: " << strerror(errno) << ", " << dirpath
-	   << "cwd: " << get_current_dir_name() << endl;
+      fprintf(stderr, "Error: %s, %s cwd: %s\n", 
+	      strerror(errno), dirpath, getcwd(buf, 255));
       exit(1);
     }
     return 0;
@@ -91,9 +92,8 @@ int cleardir(const char* dirpath)
 
 int cpdirtree(const char *dst, const char *src)
 {
-  // Get the current directory to know where to return in the end.
+  /* Get the current directory to know where to return in the end. */
   char cwd[255];
-  getcwd(cwd, 255);
 
   DIR *dp;
   struct dirent *ep;
@@ -103,23 +103,24 @@ int cpdirtree(const char *dst, const char *src)
 
   struct stat st_buf;
 
+  getcwd(cwd, 255);
   dp = opendir(src);
   if(dp != NULL)
   {
     if(chdir(src) < 0)
     {
-      cerr << "chdir(in): " << src << endl;
+      fprintf(stderr, "chdir(in): %s\n", src);
       exit(1);
     }
     while((ep = readdir(dp)) != NULL)
     {
       if((strcmp(ep->d_name, ".") == 0) || (strcmp(ep->d_name, "..") == 0))
 	continue;
-      // Get the status of the file system object.
+      /* Get the status of the file system object. */
       if (stat(ep->d_name, &st_buf) != 0)
       {
-	cerr << "Error: " << strerror(errno) << ", " << ep->d_name
-	     << "cwd: " << get_current_dir_name() << endl;
+	fprintf(stderr, "Error: %s, %s cwd: %s\n", 
+		strerror(errno), ep->d_name, getcwd(cwd, 255));
 	exit(1);
       }
 
@@ -127,34 +128,34 @@ int cpdirtree(const char *dst, const char *src)
       {
 	getcwd(absoluteSrc, 255);
 
-	cout << absoluteSrc << "/" << ep->d_name << endl;
+	printf("%s/%s\n", absoluteSrc, ep->d_name);
 
 	if(chdir(dst) < 0)
 	{
-	  cerr << "chdir(indst): " << dst << endl;
+	  fprintf(stderr, "chdir(indst): %s\n", dst);
 	  exit(1);
 	}
-	//Checking for existance
+	/* Checking for existance */
 	if((mkdir(ep->d_name, st_buf.st_mode) != 0) && (errno != EEXIST))
 	{
-	  cerr << "Error: " << strerror(errno) << ", " << ep->d_name
-	       << "cwd: " << get_current_dir_name() << endl;
+	  fprintf(stderr, "Error: %s, %s cwd: %s\n", 
+		  strerror(errno), ep->d_name, getcwd(cwd, 255));
 	  exit(1);
 	}
 	if(chdir(absoluteSrc) < 0)
 	{
-	  cerr << "chdir(outdst): " << absoluteSrc << endl;
+	  fprintf(stderr, "chdir(outdst): %s\n", absoluteSrc);
 	  exit(1);
 	}
 
 	if(dst[dstLen-1] == '/')
 	{
-	  subDst = new char[dstLen + strlen(ep->d_name)];
+	  subDst = (char *) malloc(sizeof(char)*(dstLen + strlen(ep->d_name)));
 	  subDst = strcat(strcpy(subDst, dst), ep->d_name);
 	}
 	else
 	{
-	  subDst = new char[dstLen + 1 + strlen(ep->d_name)];
+	  subDst = (char *) malloc(sizeof(char)*(dstLen + 1 + strlen(ep->d_name)));
 	  subDst = strcat(strcat(strcpy(subDst, dst), "/"), ep->d_name);
 	}
 	
@@ -164,34 +165,36 @@ int cpdirtree(const char *dst, const char *src)
     (void) closedir(dp);
     if(chdir(cwd) < 0)
     {
-      cerr << "chdir(out): " << cwd << endl;
+      fprintf(stderr, "chdir(out): %s\n", cwd);
       exit(1);
     }
     return 0;
   }
   else
   {
-    cerr << "Couldn't open the directory: " << src << endl;
+    fprintf(stderr, "Couldn't open the directory: %s\n", src);
     exit(1);
   }
 }
 
 int main(int argc, char *argv[])
 {
-  // Ensure argument passed.
+  char *src = argv[1];
+  char *dst = argv[2];
+  char fullDstPath[255];
+
+  /* Ensure necessary arguments passed. */
   if (argc < 3)
   {
-    cout << "Usage: cpdirr [-d] SRC DST\n"
-         << "       -d     to clear destination directory\n"
-         << "       SRC    path to directory to copy from\n"
-         << "       DST    path to directory to copy to";
+    printf("%s%s%s%s",
+	   "Usage: cpdirr [-d] SRC DST\n",
+	   "-d     to clear destination directory\n",
+	   "SRC    path to directory to copy from\n",
+	   "DST    path to directory to copy to\n");
     return 1;
   }
 
-  char *src = argv[1];
-  char *dst = argv[2];
-
-  //Directory clearence checking
+  /* Directory clearence checking */
   if(strcmp(argv[1], "-d") == 0)
   {
     cleardir(argv[3]);
@@ -199,7 +202,6 @@ int main(int argc, char *argv[])
     dst = argv[3];
   }
 
-  char fullDstPath[255];
   if(dst[0] != '/')
   {
     strcat(strcat(getcwd(fullDstPath, 255),"/"), dst);

@@ -1,7 +1,7 @@
 Task No11
 =========
 
-In the given directory *d* create the same directories subsystem as in the catalogue *r*.
+In the given directory *d* create the same directories subsystem as in the directory *r*.
 
 У заданому каталозі *d* створити таку ж підсистему каталогів, що і в каталозі *r*.
 
