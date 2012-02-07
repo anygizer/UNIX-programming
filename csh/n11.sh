@@ -1,6 +1,27 @@
 #!/bin/csh -f
 
-set usage="Usage:     $0 source_sirectory target_directory"
+set usage = "Usage:     $0 [options] source_sirectory target_directory"
+set v = ""
+
+while ("$1" =~ -*)
+    switch("$1")
+	case -v:
+	    set v = 1
+	    shift
+	    breaksw
+	case -d:
+	    set d = 1
+	    shift
+	    breaksw
+	case -help:
+	default:
+	    echo "Copies source directory subdirectories to the target directory."
+	    echo "$usage"
+	    echo "           -v    verbose output of directores being copied"
+	    echo "           -d    clear target_directory before copying"
+	    exit 1
+    endsw
+end
 
 # check if the both directories are specified
 if ( $#argv < 2) then
@@ -22,10 +43,16 @@ endif
 
 set startwd="$cwd"
 
+if ( $d == 1 && `ls -a $2 | wc | awk '{print $1}'` != 2) then
+    cd "$2"
+    rm -fr *          #rm -fri *
+    cd "$startwd"
+endif
+
 cd "$1"
 
 foreach directory  (`find . -type d`)
-#    echo "${directory}"
+    if ( $v == 1) echo "${directory}"
     mkdir -p "${startwd}/$2/${directory}"
 end
 
