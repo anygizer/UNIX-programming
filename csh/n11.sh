@@ -1,36 +1,32 @@
-#!/bin/bash
+#!/bin/csh -f
 
-usage="usage: $0 source_sirectory target_directory"
-
-error_exit()
-{
-  echo "$1" 1>&2
-  exit 1
-}
+set usage="Usage:     $0 source_sirectory target_directory"
 
 # check if the both directories are specified
-if [ -z $1 ] || [ -z $2 ]; then
-echo $usage
-  exit
-fi
+if ( $#argv < 2) then
+    echo "$usage"
+    exit 1
+endif
 
 # check if the first parameted is a directory
-if [ ! -d $1 ]; then
-error_exit "$1: Not a directory"
-fi
+if ( ! -d "$1" ) then
+    echo "${1}: Not a directory"
+    exit 1
+endif
 
 # check if the second parameter is a directory
-if [ ! -d $2 ]; then
-error_exit "$2: Not a directory"
-fi
+if ( ! -d "$2" ) then
+    echo "${2}: Not a directory"
+    exit 1
+endif
 
-startpwd=$PWD
+set startwd="$cwd"
 
 cd "$1"
 
-for directory in $(find . -type d); do
+foreach directory  (`find . -type d`)
 #    echo "${directory}"
-    mkdir -p "${startpwd}/$2/${directory}"
-done
+    mkdir -p "${startwd}/$2/${directory}"
+end
 
-cd "$startpwd"
+cd "$startwd"
