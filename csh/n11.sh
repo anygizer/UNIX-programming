@@ -1,7 +1,8 @@
 #!/bin/csh -f
 
 set usage = "Usage:     $0 [options] source_sirectory target_directory"
-set v = ""
+set v = 0
+set d = 0
 
 while ("$1" =~ -*)
     switch("$1")
@@ -51,9 +52,6 @@ endif
 
 cd "$1"
 
-foreach directory  (`find . -type d`)
-    if ( $v == 1) echo "${directory}"
-    mkdir -p "${startwd}/$2/${directory}"
-end
+find . -type d -exec mkdir -p "${startwd}/$2/{}" \;
 
 cd "$startwd"
