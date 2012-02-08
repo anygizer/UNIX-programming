@@ -52,8 +52,6 @@ endif
 
 cd "$1"
 
-find . -type d -exec mkdir -p "${startwd}/$2/{}" \; \
-               -exec csh -c 'chmod `stat -c "%a" "{}"` "$1/$2/{}"' "${startwd}" "$2" \;\
-	       -exec csh -c 'chown `stat -c "%U:%G" "{}"` "$1/$2/{}"' "${startwd}" "$2" \;
+find . -type d -exec csh -c 'mkdir -p -m `stat -c "%a" "{}"` "$1" ; chown `stat -c "%U:%G" "{}"` "$1"' "${startwd}/$2/{}" \;
 
 cd "$startwd"
