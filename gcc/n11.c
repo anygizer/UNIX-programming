@@ -9,12 +9,13 @@
 int isdir(const char *path)
 {
   struct stat st_buf;
-  char buf[255];
+  char buf[FILENAME_MAX];
+
   /* Get the status of the file system object. */
   if (stat(path, &st_buf) != 0)
   {
     fprintf(stderr, "Error: %s, %s cwd: %s\n", 
-	    strerror(errno), path, getcwd(buf, 255));
+	    strerror(errno), path, getcwd(buf, sizeof(buf)));
     exit(1);
   }
   return S_ISDIR(st_buf.st_mode);
@@ -24,11 +25,11 @@ int rm(const char *path)
 {
   if(isdir(path))
   {
-    char cwd[255];
+    char cwd[FILENAME_MAX];
     DIR *dp = opendir(path);
     struct dirent *ep;
 
-    getcwd(cwd, 255);
+    getcwd(cwd, sizeof(cwd));
     if(dp != NULL)
     {
       if(chdir(path) < 0)
@@ -65,12 +66,13 @@ int rm(const char *path)
 int cleardir(const char* dirpath)
 {
   struct stat st_buf;
-  char buf[255];
+  char buf[FILENAME_MAX];
+
   /* Get the status of the file system object. */
   if (stat(dirpath, &st_buf) != 0)
   {
     fprintf(stderr, "Error: %s, %s cwd: %s\n", 
-	    strerror(errno), dirpath, getcwd(buf, 255));
+	    strerror(errno), dirpath, getcwd(buf, sizeof(buf)));
     exit(1);
   }
   if(S_ISDIR(st_buf.st_mode))
@@ -79,7 +81,7 @@ int cleardir(const char* dirpath)
     if(mkdir(dirpath, st_buf.st_mode) != 0)
     {
       fprintf(stderr, "Error: %s, %s cwd: %s\n", 
-	      strerror(errno), dirpath, getcwd(buf, 255));
+	      strerror(errno), dirpath, getcwd(buf, sizeof(buf)));
       exit(1);
     }
     return 0;
@@ -93,17 +95,19 @@ int cleardir(const char* dirpath)
 int cpdirtree(const char *dst, const char *src)
 {
   /* Get the current directory to know where to return in the end. */
-  char cwd[255];
+  char cwd[FILENAME_MAX];
 
   DIR *dp;
   struct dirent *ep;
   char *subDst;
   int dstLen = strlen(dst);
-  char absoluteSrc[255];
+  char absoluteSrc[FILENAME_MAX];
 
   struct stat st_buf;
 
-  getcwd(cwd, 255);
+  getcwd(cwd, sizeof(cwd));
+  printf("startwd: %s\n", cwd);
+
   dp = opendir(src);
   if(dp != NULL)
   {
@@ -116,30 +120,32 @@ int cpdirtree(const char *dst, const char *src)
     {
       if((strcmp(ep->d_name, ".") == 0) || (strcmp(ep->d_name, "..") == 0))
 	continue;
+
       /* Get the status of the file system object. */
       if (stat(ep->d_name, &st_buf) != 0)
       {
 	fprintf(stderr, "Error: %s, %s cwd: %s\n", 
-		strerror(errno), ep->d_name, getcwd(cwd, 255));
+		strerror(errno), ep->d_name, getcwd(cwd, sizeof(cwd)));
 	exit(1);
       }
 
       if(S_ISDIR(st_buf.st_mode))
       {
-	getcwd(absoluteSrc, 255);
+	getcwd(absoluteSrc, sizeof(absoluteSrc));
 
-	printf("%s/%s\n", absoluteSrc, ep->d_name);
+	printf("dirs: %s/%s\n", absoluteSrc, ep->d_name);
 
 	if(chdir(dst) < 0)
 	{
 	  fprintf(stderr, "chdir(indst): %s\n", dst);
 	  exit(1);
 	}
+
 	/* Checking for existance */
 	if((mkdir(ep->d_name, st_buf.st_mode) != 0) && (errno != EEXIST))
 	{
 	  fprintf(stderr, "Error: %s, %s cwd: %s\n", 
-		  strerror(errno), ep->d_name, getcwd(cwd, 255));
+		  strerror(errno), ep->d_name, getcwd(cwd, sizeof(cwd)));
 	  exit(1);
 	}
 	if(chdir(absoluteSrc) < 0)
@@ -179,9 +185,9 @@ int cpdirtree(const char *dst, const char *src)
 
 int main(int argc, char *argv[])
 {
-  char *src = argv[1];
-  char *dst = argv[2];
-  char fullDstPath[255];
+  char *src;
+  char *dst;
+  char fullDstPath[FILENAME_MAX];
 
   /* Ensure necessary arguments passed. */
   if (argc < 3)
@@ -197,14 +203,45 @@ int main(int argc, char *argv[])
   /* Directory clearence checking */
   if(strcmp(argv[1], "-d") == 0)
   {
+    if(argc < 4)
+    {
+      printf("%s%s%s%s",
+	     "Usage: cpdirr [-d] SRC DST\n",
+	     "-d     to clear destination directory\n",
+	     "SRC    path to directory to copy from\n",
+	     "DST    path to directory to copy to\n");
+      return 1;
+    }
+    if(!isdir(argv[3]))
+    {
+      fprintf(stderr, "Target: %s: Isn't a directory.\n", argv[3]);
+      return 1;
+    }
+
     cleardir(argv[3]);
     src = argv[2];
     dst = argv[3];
   }
+  else
+  {
+    src = argv[1];
+    dst = argv[2];
+  }
+
+  if(!isdir(src))
+  {
+    fprintf(stderr, "Source: %s: Isn't a directory.\n", src);
+    return 1;
+  }
+  if(!isdir(dst))
+  {
+    fprintf(stderr, "Target: %s: Isn't a directory.\n", dst);
+    return 1;
+  }
 
   if(dst[0] != '/')
   {
-    strcat(strcat(getcwd(fullDstPath, 255),"/"), dst);
+    strcat(strcat(getcwd(fullDstPath, sizeof(fullDstPath)),"/"), dst);
     return cpdirtree(fullDstPath, src);
   }
 
