@@ -164,8 +164,10 @@ int cpdirtree(const char *dst, const char *src)
 	  subDst = (char *) malloc(sizeof(char)*(dstLen + 1 + strlen(ep->d_name)));
 	  subDst = strcat(strcat(strcpy(subDst, dst), "/"), ep->d_name);
 	}
-	
+
 	cpdirtree(subDst, ep->d_name);
+
+	free(subDst);
       }
     }
     (void) closedir(dp);

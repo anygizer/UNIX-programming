@@ -3,3 +3,12 @@
 gcc/#*#
 cpdirr
 *\.swp
+
+# Qt #
+######
+*\.o
+*\.pro\.user
+qt/Makefile
+moc_*\.cpp
+qt/CopyDirectoryStructure
+ui_*\.h
