@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QErrorMessage>
 
 namespace Ui {
     class MainWindow;
@@ -23,9 +24,11 @@ protected:
 
 private:
     Ui::MainWindow *ui;
+    QErrorMessage *errMsg;
     void cpdr(const char *src, const char *dst);
     void cleardir(const char* dirpath);
     void rm(const char *path);
+    void fireMessage(const QString & message);
 };
 
 #endif // MAINWINDOW_H

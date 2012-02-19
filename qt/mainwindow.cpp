@@ -1,9 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "qexistingdirvalidator.h"
 #include <QFileDialog>
 #include <QFileSystemModel>
-#include <QErrorMessage>
-#include <stdio.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -16,14 +15,17 @@ MainWindow::MainWindow(QWidget *parent) :
         ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    ui->lineEdit->setValidator(new QExistingDirValidator(ui->lineEdit));
     connect(ui->pushButton, SIGNAL(clicked()), this, SLOT(selectSrcDir()));
     connect(ui->pushButton_2, SIGNAL(clicked()), this, SLOT(selectTgtDir()));
     connect(ui->pushButton_3, SIGNAL(clicked()), this, SLOT(copyDirStruct()));
+    errMsg = new QErrorMessage(this);
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+    delete errMsg;
 }
 
 void MainWindow::changeEvent(QEvent *e)
@@ -36,6 +38,12 @@ void MainWindow::changeEvent(QEvent *e)
     default:
         break;
     }
+}
+
+void MainWindow::fireMessage(const QString &message)
+{
+    errMsg->showMessage(message);
+    errMsg->exec();
 }
 
 void MainWindow::selectSrcDir()
@@ -54,17 +62,47 @@ void MainWindow::selectTgtDir()
 
 void MainWindow::copyDirStruct()
 {
-    //TODO: move it to the lineedit validators and expand it
-    if(!(new QFileInfo(ui->lineEdit_2->text()))->isWritable())
+    if(ui->lineEdit->text().isEmpty())
     {
-        QErrorMessage mess;
-        mess.showMessage(tr("Target directory is not writable."));
-        if(mess.exec())
-        {
-            return;
-        }
+        fireMessage(tr("Specify the source directory please."));
+        return;
+    }
+    QFileInfo fi = QFileInfo(ui->lineEdit->text());
+    if(!fi.exists())
+    {
+        fireMessage(tr("Specified source directory does not exist."));
+        return;
+    }
+    if(!fi.isDir())
+    {
+        fireMessage(tr("Specified source directory is not a directory."));
+        return;
     }
 
+    if(ui->lineEdit_2->text().isEmpty())
+    {
+        fireMessage(tr("Specify the target directory please."));
+        return;
+    }
+    fi = QFileInfo(ui->lineEdit_2->text());
+    if(!fi.exists())
+    {
+        QDir d = QDir(fi.path());
+        d.mkdir(fi.baseName());
+        fi = QFileInfo(d.absolutePath());
+    }
+    if(!fi.isDir())
+    {
+        fireMessage(tr("Specified target directory is not a directory."));
+        return;
+    }
+    if(!fi.isWritable())
+    {
+        fireMessage(tr("Target directory is not writable."));
+        return;
+    }
+
+    //Clear target directory if user asked to
     if(ui->checkBox->isChecked())
     {
         cleardir(ui->lineEdit_2->text().toLocal8Bit().constData());
@@ -166,63 +204,41 @@ void MainWindow::cpdr(const char *src, const char *dst)
 
 void MainWindow::rm(const char *path)
 {
-    if(QFileInfo(tr(path)).isDir())
+    QFileInfo pathFI(path);
+    if(pathFI.isDir())
     {
-        char cwd[FILENAME_MAX];
-        DIR *dp = opendir(path);
-        struct dirent *ep;
-
-        getcwd(cwd, sizeof(cwd));
-        if(dp != NULL)
+        QDir d(path);
+        foreach(QFileInfo fi, d.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries))
         {
-            if(chdir(path) < 0)
+            if(fi.isDir())
             {
-                fprintf(stderr, "chdir(in): %s\n", path);
-                exit(1);
+                rm((fi.absolutePath()+QDir::separator()+fi.baseName()).toLocal8Bit().constData());
             }
-            while((ep = readdir(dp)) != NULL)
+            else
             {
-                if((strcmp(ep->d_name, ".") != 0) && (strcmp(ep->d_name, "..") != 0))
-                {
-                    rm(ep->d_name);
-                }
+                d.remove(fi.baseName());
             }
-            if(chdir(cwd) < 0)
-            {
-                qWarning("chdir(out): %s\n", cwd);
-                return;
-            }
-            (void) closedir(dp);
-            rmdir(path);
         }
+        pathFI.dir().rmdir(pathFI.baseName());
     }
     else
     {
-        unlink(path);
+        pathFI.dir().remove(pathFI.baseName());
     }
 }
 
 
 void MainWindow::cleardir(const char* dirpath)
 {
-    struct stat st_buf;
-    char buf[FILENAME_MAX];
+    QFileInfo fi(dirpath);
 
-    /* Get the status of the file system object. */
-    if (stat(dirpath, &st_buf) != 0)
+    if(fi.exists() && fi.isDir())
     {
-        qWarning("Error: %s, %s cwd: %s\n",
-                 strerror(errno), dirpath, getcwd(buf, sizeof(buf)));
-        return;
-    }
-
-    if(S_ISDIR(st_buf.st_mode))
-    {
-        rm(dirpath);
-        if(mkdir(dirpath, st_buf.st_mode) != 0)
+        foreach(QString s, QDir(dirpath).entryList(QDir::NoDotAndDotDot | QDir::AllEntries))
         {
-            qWarning("Error: %s, %s cwd: %s\n",
-                     strerror(errno), dirpath, getcwd(buf, sizeof(buf)));
+            rm((fi.absolutePath() + QDir::separator() + fi.baseName() + QDir::separator()
+                + s).toLocal8Bit().constData());
         }
+        return;
     }
 }
