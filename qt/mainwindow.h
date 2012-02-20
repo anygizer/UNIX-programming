@@ -26,8 +26,8 @@ private:
     Ui::MainWindow *ui;
     QErrorMessage *errMsg;
     void cpdr(const char *src, const char *dst);
-    void cleardir(const char* dirpath);
-    void rm(const char *path);
+    void cleardir(const QString &dirpath);
+    void rm(const QString &path);
     void fireMessage(const QString & message);
 };
 

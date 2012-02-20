@@ -1,21 +1,18 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "qexistingdirvalidator.h"
 #include <QFileDialog>
-#include <QFileSystemModel>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+
+
+
 
 MainWindow::MainWindow(QWidget *parent) :
         QMainWindow(parent),
         ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    ui->lineEdit->setValidator(new QExistingDirValidator(ui->lineEdit));
     connect(ui->pushButton, SIGNAL(clicked()), this, SLOT(selectSrcDir()));
     connect(ui->pushButton_2, SIGNAL(clicked()), this, SLOT(selectTgtDir()));
     connect(ui->pushButton_3, SIGNAL(clicked()), this, SLOT(copyDirStruct()));
@@ -105,13 +102,35 @@ void MainWindow::copyDirStruct()
     //Clear target directory if user asked to
     if(ui->checkBox->isChecked())
     {
-        cleardir(ui->lineEdit_2->text().toLocal8Bit().constData());
+        cleardir(ui->lineEdit_2->text());
     }
 
-    //    QDir srcDir(ui->lineEdit->text());
-    //    srcDir.setFilter(QDir::NoDotAndDotDot | QDir::Dirs);
     cpdr(ui->lineEdit->text().toLocal8Bit().constData(), ui->lineEdit_2->text().toLocal8Bit().constData());
+//    cpdr(ui->lineEdit->text(), ui->lineEdit_2->text());
 }
+
+///**
+// *  Qt way of recursive directory tree copy.
+// */
+//void MainWindow::cpdr(const QString &src, const QString &dst)
+//{
+//    QDir srcDir(src);
+//    if(!srcDir.exists())
+//    {
+//        qWarning("The source directory does not exist: %s", src);
+//        return;
+//    }
+//    QDir dstDir(dst);
+//    if(!dstDir.exists())
+//    {
+//        dstDir.mkpath(dst);
+//    }
+//    foreach(QString s, srcDir.entryList(QDir::NoDotAndDotDot | QDir::Dirs))
+//    {
+//        s = QDir::separator() + s;
+//        cpdr(srcDir.absolutePath() + s, dstDir.absolutePath() + s);
+//    }
+//}
 
 void MainWindow::cpdr(const char *src, const char *dst)
 {
@@ -202,7 +221,7 @@ void MainWindow::cpdr(const char *src, const char *dst)
     }
 }
 
-void MainWindow::rm(const char *path)
+void MainWindow::rm(const QString &path)
 {
     QFileInfo pathFI(path);
     if(pathFI.isDir())
@@ -212,7 +231,7 @@ void MainWindow::rm(const char *path)
         {
             if(fi.isDir())
             {
-                rm((fi.absolutePath()+QDir::separator()+fi.baseName()).toLocal8Bit().constData());
+                rm(fi.absolutePath()+QDir::separator()+fi.baseName());
             }
             else
             {
@@ -228,16 +247,14 @@ void MainWindow::rm(const char *path)
 }
 
 
-void MainWindow::cleardir(const char* dirpath)
+void MainWindow::cleardir(const QString &dirpath)
 {
     QFileInfo fi(dirpath);
-
-    if(fi.exists() && fi.isDir())
+    if(fi.isDir())
     {
         foreach(QString s, QDir(dirpath).entryList(QDir::NoDotAndDotDot | QDir::AllEntries))
         {
-            rm((fi.absolutePath() + QDir::separator() + fi.baseName() + QDir::separator()
-                + s).toLocal8Bit().constData());
+            rm(fi.absolutePath() + QDir::separator() + fi.baseName() + QDir::separator() + s);
         }
         return;
     }
