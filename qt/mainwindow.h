@@ -25,10 +25,10 @@ protected:
 private:
     Ui::MainWindow *ui;
     QErrorMessage *errMsg;
-    void cpdr(const char *src, const char *dst);
+    void cpdr(const QString &src, const QString &dst);
     void cleardir(const QString &dirpath);
     void rm(const QString &path);
-    void fireMessage(const QString & message);
+    void fireMessage(const QString & message, bool popup = true, int timeout = 0);
 };
 
 #endif // MAINWINDOW_H
