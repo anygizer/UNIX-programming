@@ -21,3 +21,6 @@ ui_*\.h
 /java/nbproject/private/
 /java/build/
 /java/dist/
+/javagui/nbproject/private/
+/javagui/build/
+/javagui/dist/

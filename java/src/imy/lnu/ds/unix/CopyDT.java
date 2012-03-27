@@ -1,4 +1,4 @@
-package imy;
+package imy.lnu.ds.unix;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -12,7 +12,7 @@ import java.util.logging.Logger;
  *
  * @author mcangel
  */
-public class cpdirr
+public class CopyDT
 {
 	/**
 	 * Deletes all files and subdirectories under dir.
@@ -22,14 +22,18 @@ public class cpdirr
 	 */
 	public static Path clearDir(Path dir) throws IOException
 	{
+		if(dir.toString().equals(""))
+		{
+			throw new IOException("Specified for clearence directory path is empty.");
+		}
 		//Check to ensure that the source is valid
 		if (!Files.exists(dir))
 		{
-			throw new IOException("clearDir: Can not find dir: " + dir);
+			throw new IOException("Can not find dir: " + dir);
 		} // check to ensure the source is a directory
 		else if (!Files.isDirectory(dir))
 		{
-			throw new IOException("clearDir: dir isn't a directory: " + dir);
+			throw new IOException("dir isn't a directory: " + dir);
 		}
 		
 		FileVisitor<Path> FileDeletor = new SimpleFileVisitor<Path>()
@@ -79,20 +83,28 @@ public class cpdirr
 	 */
 	public static Path cpdirtree(final Path source, final Path target) throws IOException
 	{
+		if(source.toString().equals(""))
+		{
+			throw new IOException("Source path is empty.");
+		}
+		if(target.toString().equals(""))
+		{
+			throw new IOException("Target path is empty.");
+		}
 		//Check to ensure that the source is valid
 		if (!Files.exists(source))
 		{
-			throw new IOException("cpdirtree: Can not find source: " + source);
+			throw new IOException("Can not find source: " + source);
 		}
 		// check to ensure the source is a directory
 		else if (!Files.isDirectory(source))
 		{
-			throw new IOException("cpdirtree: Source isn't a directory: " + source);
+			throw new IOException("Source isn't a directory: " + source);
 		}
 		//check to ensure we have rights to the source...
 		else if (!Files.isReadable(source))
 		{
-			throw new IOException("cpdirtree: No right to source: " + source);
+			throw new IOException("No right to source: " + source);
 		}
 		
 		//does the destination already exist?
@@ -173,7 +185,7 @@ public class cpdirr
 			System.out.println("Copying done.");
 		} catch (IOException ex)
 		{
-			Logger.getLogger(cpdirr.class.getName()).log(Level.SEVERE, null, ex);
+			Logger.getLogger(CopyDT.class.getName()).log(Level.SEVERE, null, ex);
 		}
 	}
 }
